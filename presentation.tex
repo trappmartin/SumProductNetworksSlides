@@ -1,0 +1,394 @@
+\documentclass{beamer}
+
+% Set theme and colors
+\usetheme{metropolis}
+\useoutertheme{metropolis}
+\useinnertheme{metropolis}
+\usefonttheme{metropolis}
+\usecolortheme[snowy]{owl}
+
+% Load packages
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{helvet}
+\usepackage[beamer,customcolors]{hf-tikz}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{mathrsfs}
+\usepackage{bm}
+
+% math packages
+\usepackage{amsmath,amsfonts}
+\usepackage{bigints}
+
+
+% beamer settings
+\setbeamercovered{transparent}
+
+\setbeamertemplate{blocks}[rounded][shadow=false]
+\setbeamercolor{block title}{use=structure,fg=white,bg=red!75!black}
+\setbeamercolor{block body}{use=structure,fg=black,bg=red!20!white}
+
+% tikz libs
+\usetikzlibrary{positioning}
+\usetikzlibrary{shapes.geometric}
+\usetikzlibrary{arrows}
+\usetikzlibrary{arrows.meta}
+\usetikzlibrary{patterns,decorations.pathreplacing}
+\usetikzlibrary{fit}
+\usetikzlibrary{backgrounds}
+\usetikzlibrary{shapes,backgrounds,calc}
+
+\newsavebox{\genericfilt}
+\savebox{\genericfilt}{%
+\begin{tikzpicture}[font=\small, >=stealth,yscale=0.15,xscale=0.1]
+  % define normal distribution function 'normaltwo'
+  \def\normaltwo{\x,{exp((-(\x)^2)/0.5)}}
+  \draw[line width=0.25mm,domain=-1.7:1.7] plot (\normaltwo);
+\end{tikzpicture}%
+}
+
+\tikzset{
+diagonal fill/.style 2 args={fill=#2, path picture={
+\fill[#1, sharp corners] (path picture bounding box.south west) -|
+                         (path picture bounding box.north east) -- cycle;}},
+reversed diagonal fill/.style 2 args={fill=#2, path picture={
+\fill[#1, sharp corners] (path picture bounding box.north west) |-
+                         (path picture bounding box.south east) -- cycle;}}
+}
+
+\tikzset{
+  onslide/.code args={<#1>#2}{%
+    \only<#1>{\pgfkeysalso{#2}}%
+  }
+}
+
+% Some SPN definitions...
+\newcommand{\SPT}{\mathcal{T}}
+\newcommand{\SPN}{\mathcal{S}}
+\newcommand{\graph}{\mathcal{G}}
+\newcommand{\scope}{\psi}
+\newcommand{\ProductNode}{\mathsf{P}}
+\newcommand{\ProductNodes}{\bm{\mathsf{P}}}
+\newcommand{\SumNode}{\mathsf{S}}
+\newcommand{\SumNodes}{\bm{\mathsf{S}}}
+\newcommand{\Leaf}{\mathsf{L}}
+\newcommand{\Leaves}{\bm{\mathsf{L}}}
+\newcommand{\Node}{\mathsf{N}}
+\newcommand{\Nodes}{\bm{\mathsf{N}}}
+\newcommand{\Child}{\mathsf{C}}
+\newcommand{\Region}{\ensuremath{R}}
+\newcommand{\Partition}{\ensuremath{P}}
+\newcommand{\Regions}{\ensuremath{\bm{R}}}
+\newcommand{\Partitions}{\ensuremath{\bm{P}}}
+\newcommand{\RG}{\ensuremath{\mathcal{R}}}
+
+\newcommand{\X}{\bm{X}}
+\newcommand{\ch}{\ensuremath{\bm{ch}}}
+\newcommand{\anc}{\ensuremath{\bm{anc}}}
+
+\newcommand{\powerSet}[1]{\mathscr{P}(#1)} % power set
+\newcommand{\cbar}{\;|\;}
+
+\begin{document}
+
+\begin{frame}{Sum-Product Networks}
+\begin{block}{Sum-Product Networks (SPNs)}
+    A sum-product network [Poon \& Domingos 2011] over random variables $\X$ is a tuple $\SPN = (\graph, \scope, \bm{w}, \theta)$, consisting of a \emph{computational graph} $\graph$, a \emph{scope-function} $\scope$ [Trapp et al. 2019], network weights $\bm{w}$ and leaf node parameters $\theta$.
+\end{block}
+%\\[2em]
+Why use SPNs? \emph{Exact and efficient} computation of many probabilistic inference tasks, e.g.~marginalisation.
+\\[2em]
+
+SPNs are deep structured mixture models, generalising shallow mixtures, using an architecture that is a special type of a sparse \emph{linear} neural network with non-linear inputs.
+
+Every SPN is a multi-linear function in its weights.
+\end{frame}
+
+\begin{frame}{Computational Graph: $\graph$}
+\scalebox{0.9}{
+\begin{tikzpicture}[>=latex, minimum size=6mm, inner sep=0pt, align=center]
+
+        % nodes
+        \node[draw, thick, circle, onslide=<2-3>{opacity=0.2}, onslide=<4->{opacity=1}, onslide=<4>{label=right:{$\;\;\SumNode(\bm{x})=\sum_{\Node \in \ch{\SumNode}} w_{\SumNode,\Node} \Node(\bm{x}) \;\;\;\; (w_{\SumNode,\Node} \geq 0)$}}] (s1) {\large$+$};
+
+        \node[draw, thick, circle, onslide=<2-3>{opacity=0.2}, onslide=<4->{opacity=1}] (p1) [below left = 20pt and 40pt of s1]  {\large$\times$};
+        \node[draw, thick, circle, onslide=<2>{opacity=0.2}, onslide=<3->{opacity=1}, onslide=<3>{label=right:{$\;\;\ProductNode(\bm{x})=\prod_{\Node \in \ch(\ProductNode)} \Node(\bm{x})$}}] (p2) [below right = 20pt and 40pt of s1]  {\large$\times$};
+
+        \node[draw, thick, circle, onslide=<2-3>{opacity=0.2}, onslide=<4->{opacity=1}] (s2) [below right = 20pt and 15pt of p1] {\large$+$};
+        \node[draw, thick, circle, onslide=<2>{opacity=0.2}, onslide=<3->{opacity=1}] (s3) [below left = 20pt and 15pt of p2] {\large$+$};
+
+        \node[draw, thick, circle, onslide=<2-3>{opacity=0.2}, onslide=<4->{opacity=1}] (p3) [below left = 20pt and 20pt of s2]  {\large$\times$};
+        \node[draw, thick, circle, onslide=<2-3>{opacity=0.2}, onslide=<4->{opacity=1}] (p4) [below right = 20pt and 0pt of s2]  {\large$\times$};
+        \node[draw, thick, circle, onslide=<2>{opacity=0.2}, onslide=<3->{opacity=1}] (p5) [below right = 20pt and 0pt of s3]  {\large$\times$};
+        
+        \node[draw, thick, circle, onslide=<2-3>{opacity=0.2}, onslide=<4->{opacity=1}] (s4) [below left = 20pt and 10pt of p3] {\large$+$};
+        \node[draw, thick, circle, onslide=<2>{opacity=0.2}, onslide=<3->{opacity=1}] (s5) [below right = 20pt and 0pt of p4] {\large$+$};
+        \node[draw, thick, circle, onslide=<2>{opacity=0.2}, onslide=<3->{opacity=1}] (s6) [below right = 20pt and 20pt of p5] {\large$+$};
+
+        \node[draw, thick, circle, onslide=<2-3>{opacity=0.2}, onslide=<4->{opacity=1}] (l1) [below left = 20pt and 20pt of p1] {\usebox{\genericfilt}};
+        \node[draw, thick, circle, onslide=<2>{label=right:{$\;\;\Leaf(\bm{x}) = p(\bm{x}_\Leaf \cbar \theta_\Leaf)$}}] (l6) [below right = 20pt and 20pt of p2] {\usebox{\genericfilt}};
+
+        \node[draw, thick, circle, onslide=<2-3>{opacity=0.2}, onslide=<4->{opacity=1}] (l2) [below left = 20pt and 5pt of s4] {\usebox{\genericfilt}};
+        \node[draw, thick, circle, onslide=<2-3>{opacity=0.2}, onslide=<4->{opacity=1}] (l3) [below right = 20pt and 5pt of s4] {\usebox{\genericfilt}};
+
+        \node[draw, thick, circle, onslide=<2>{opacity=0.2}, onslide=<3->{opacity=1}] (l4) [below left = 20pt and 5pt of s5] {\usebox{\genericfilt}};
+        \node[draw, thick, circle, onslide=<2>{opacity=0.2}, onslide=<3->{opacity=1}] (l5) [below right = 20pt and 5pt of s5] {\usebox{\genericfilt}};
+        
+        \node[draw, thick, circle, onslide=<2>{opacity=0.2}, onslide=<3->{opacity=1}] (l7) [below left = 20pt and 5pt of s6] {\usebox{\genericfilt}};
+        \node[draw, thick, circle, onslide=<2>{opacity=0.2}, onslide=<3->{opacity=1}] (l8) [below right = 20pt and 5pt of s6] {\usebox{\genericfilt}};
+        
+        % edges
+        \draw [->, onslide=<2-3>{opacity=0.2}] (s1) -- (p1);
+        \draw [->, onslide=<2-3>{opacity=0.2}] (s1) -- (p2);
+
+        \draw [->, onslide=<2-3>{opacity=0.2}] (p1) -- (l1);
+        \draw [->, onslide=<2-3>{opacity=0.2}] (p1) -- (s2);
+
+        \draw [->, onslide=<2>{opacity=0.2}] (p2) -- (s3);
+
+        \draw [->, onslide=<2-3>{opacity=0.2}] (s2) -- (p3);
+        \draw [->, onslide=<2-3>{opacity=0.2}] (s2) -- (p4);
+
+        \draw [->, onslide=<2>{opacity=0.2}] (s3) -- (p5);
+
+        \draw [->, onslide=<2-3>{opacity=0.2}] (p3) -- (s4);
+        \draw [->, onslide=<2-3>{opacity=0.2}] (p3) -- (s5);
+        
+        \draw [->, onslide=<2-3>{opacity=0.2}] (p4) -- (s5);
+        \draw [->, onslide=<2-3>{opacity=0.2}] (p4) -- (l3);
+        
+        \draw [->, onslide=<2-3>{opacity=0.2}] (s4) -- (l2);
+        \draw [->, onslide=<2-3>{opacity=0.2}] (s4) -- (l3);
+        
+        \draw [->, onslide=<2>{opacity=0.2}] (s5) -- (l4);
+        \draw [->, onslide=<2>{opacity=0.2}] (s5) -- (l5);
+        
+        \draw [->, onslide=<2>{opacity=0.2}] (p5) -- (s5);
+        \draw [->, onslide=<2>{opacity=0.2}] (p5) -- (s6);
+        
+        \draw [->, onslide=<2>{opacity=0.2}] (p2) -- (l6);
+        
+        \draw [->, onslide=<2>{opacity=0.2}] (s6) -- (l7);
+        \draw [->, onslide=<2>{opacity=0.2}] (s6) -- (l8);
+    \end{tikzpicture}
+}
+\end{frame}
+
+\begin{frame}{Scope Function: $\scope \colon \Nodes \mapsto \powerSet{\X}$}
+\scalebox{0.9}{
+\begin{tikzpicture}[>=latex, minimum size=6mm, inner sep=0pt, align=center]
+
+        % nodes
+        \node[draw, onslide=<3->{draw=black!75, fill=gray!20, label=right:{$\{X_1,X_2,X_3\}$}}, thick, circle] (s1) {\large$+$};
+
+        \node[draw, onslide=<3->{draw=black!75, fill=gray!20}, thick, circle] (p1) [below left = 20pt and 40pt of s1]  {\large$\times$};
+        \node[draw, onslide=<3->{draw=black!75, fill=gray!20, label=right:{$\{X_1,X_2,X_3\}$}}, thick, circle] (p2) [below right = 20pt and 40pt of s1]  {\large$\times$};
+
+        \node[draw, onslide=<3->{draw=black!75, diagonal fill={blue!20}{purple!20}}, thick, circle] (s2) [below right = 20pt and 15pt of p1] {\large$+$};
+        \node[draw, onslide=<3->{draw=black!75, diagonal fill={orange!20}{blue!20}}, thick, circle] (s3) [below left = 20pt and 15pt of p2] {\large$+$};
+
+        \node[draw, onslide=<2->{draw=black!75, diagonal fill={blue!20}{purple!20}}, thick, circle] (p3) [below left = 20pt and 20pt of s2]  {\large$\times$};
+        \node[draw, onslide=<2->{draw=black!75, diagonal fill={blue!20}{purple!20}}, thick, circle] (p4) [below right = 20pt and 0pt of s2]  {\large$\times$};
+        \node[draw, onslide=<2->{draw=black!75, diagonal fill={orange!20}{blue!20}, label=right:{$\{X_2, X_3\}$}}, thick, circle] (p5) [below right = 20pt and 0pt of s3]  {\large$\times$};
+        
+        \node[draw=purple!75, fill=purple!20, label=right:{$\{X_3\}$}, thick, circle] (s4) [below left = 20pt and 10pt of p3] {\large$+$};
+        \node[draw=blue!75, fill=blue!20, label=right:{$\{X_2\}$}, thick, circle] (s5) [below right = 20pt and 0pt of p4] {\large$+$};
+        \node[draw=orange!75, fill=orange!20, label=right:{$\{X_1\}$}, thick, circle] (s6) [below right = 20pt and 20pt of p5] {\large$+$};
+
+        \node[draw, thick, circle, onslide=<3->{draw=orange!75, fill=orange!20}] (l1) [below left = 20pt and 20pt of p1] {\usebox{\genericfilt}};
+        \node[draw, thick, circle, onslide=<3->{draw=purple!75, fill=purple!20, label=right:{$\{X_2\}$}}] (l6) [below right = 20pt and 20pt of p2] {\usebox{\genericfilt}};
+
+        \node[draw=purple!75, fill=purple!20, thick, circle, label=below:{$\{X_2\}$}] (l2) [below left = 20pt and 5pt of s4] {\usebox{\genericfilt}};
+        \node[draw=purple!75, fill=purple!20, thick, circle, label=below:{$\{X_2\}$}] (l3) [below right = 20pt and 5pt of s4] {\usebox{\genericfilt}};
+
+        \node[draw=blue!75, fill=blue!20, thick, circle, label=below:{$\{X_3\}$}] (l4) [below left = 20pt and 5pt of s5] {\usebox{\genericfilt}};
+        \node[draw=blue!75, fill=blue!20, thick, circle, label=below:{$\{X_3\}$}] (l5) [below right = 20pt and 5pt of s5] {\usebox{\genericfilt}};
+        
+        \node[draw=orange!75, fill=orange!20, thick, circle, label=below:{$\{X_1\}$}] (l7) [below left = 20pt and 5pt of s6] {\usebox{\genericfilt}};
+        \node[draw=orange!75, fill=orange!20, thick, circle, label=below:{$\{X_1\}$}] (l8) [below right = 20pt and 5pt of s6] {\usebox{\genericfilt}};
+        
+        % edges
+        \draw [->] (s1) -- (p1);
+        \draw [->] (s1) -- (p2);
+
+        \draw [->] (p1) -- (l1);
+        \draw [->] (p1) -- (s2);
+
+        \draw [->] (p2) -- (s3);
+
+        \draw [->] (s2) -- (p3);
+        \draw [->] (s2) -- (p4);
+
+        \draw [->] (s3) -- (p5);
+
+        \draw [->] (p3) -- (s4);
+        \draw [->] (p3) -- (s5);
+        
+        \draw [->] (p4) -- (s5);
+        \draw [->] (p4) -- (l3);
+        
+        \draw [->] (s4) -- (l2);
+        \draw [->] (s4) -- (l3);
+        
+        \draw [->] (s5) -- (l4);
+        \draw [->] (s5) -- (l5);
+        
+        \draw [->] (p5) -- (s5);
+        \draw [->] (p5) -- (s6);
+        
+        \draw [->] (p2) -- (l6);
+        
+        \draw [->] (s6) -- (l7);
+        \draw [->] (s6) -- (l8);
+    \end{tikzpicture}
+}
+\end{frame}
+
+\begin{frame}{SPNs as a Mixture of Induced Trees}
+\scalebox{0.9}{
+\begin{tikzpicture}[>=latex, minimum size=6mm, inner sep=0pt, align=center]
+
+        % nodes
+        \node[draw=black!75, fill=gray!20, label=right:{$\color{gray!50}\{X_1,X_2,X_3\}$}, thick, circle, label=left:{$Z_{\SumNode_1} = 1\,$}] (s1) {\large$+$};
+
+        \node[draw=black!75, fill=gray!20, thick, circle] (p1) [below left = 20pt and 40pt of s1]  {\large$\times$};
+        \node[draw=black!75, fill=gray!20, label=right:{$\color{gray!50}\{X_1,X_2,X_3\}$}, thick, circle, opacity=0.2] (p2) [below right = 20pt and 40pt of s1]  {\large$\times$};
+
+        \node[draw=black!75, diagonal fill={blue!20}{purple!20}, thick, circle, onslide=<1>{label=left:{$Z_{\SumNode_2} = 1\,$}}, onslide=<2>{label=left:{$Z_\SumNode = 2\;$}}] (s2) [below right = 20pt and 15pt of p1] {\large$+$};
+        \node[draw=black!75, diagonal fill={orange!20}{blue!20}, thick, circle, opacity=0.2] (s3) [below left = 20pt and 15pt of p2] {\large$+$};
+
+        \node[draw=black!75, diagonal fill={blue!20}{purple!20}, thick, circle, onslide=<2>{opacity=0.2}] (p3) [below left = 20pt and 20pt of s2]  {\large$\times$};
+        \node[draw=black!75, diagonal fill={blue!20}{purple!20}, thick, circle, onslide=<1>{opacity=0.2}] (p4) [below right = 20pt and 0pt of s2]  {\large$\times$};
+        \node[draw=black!75, diagonal fill={orange!20}{blue!20}, label=right:{$\color{gray!50}\{X_2, X_3\}$}, thick, circle, opacity=0.2] (p5) [below right = 20pt and 0pt of s3]  {\large$\times$};
+        
+        \node[draw=purple!75, fill=purple!20, label=right:{$\color{gray!50}\{X_3\}$}, thick, circle, onslide=<1>{label=left:{$Z_{\SumNode_4} = 2\,$}}, onslide=<2>{opacity=0.2}] (s4) [below left = 20pt and 10pt of p3] {\large$+$};
+        \node[draw=blue!75, fill=blue!20, label=left:{$\color{gray!50}\{X_2\}$}, thick, circle, onslide=<1>{label=right:{$\,Z_{\SumNode_5} = 1$}}, onslide=<2>{label=right:{$\,Z_{\SumNode_5} = 2$}}] (s5) [below right = 20pt and 0pt of p4] {\large$+$};
+        \node[draw=orange!75, fill=orange!20, label=right:{$\color{gray!50}\{X_1\}$}, thick, circle, opacity=0.2] (s6) [below right = 20pt and 20pt of p5] {\large$+$};
+
+        \node[thick, circle, draw=orange!75, fill=orange!20] (l1) [below left = 20pt and 20pt of p1] {\usebox{\genericfilt}};
+        \node[thick, circle, draw=purple!75, fill=purple!20, label=right:{$\color{gray!50}\{X_2\}$}, opacity=0.2] (l6) [below right = 20pt and 20pt of p2] {\usebox{\genericfilt}};
+
+        \node[draw=purple!75, fill=purple!20, thick, circle, label=below:{$\color{gray!50}\{X_2\}$}, opacity=0.2] (l2) [below left = 20pt and 5pt of s4] {\usebox{\genericfilt}};
+        \node[draw=purple!75, fill=purple!20, thick, circle, label=below:{$\color{gray!50}\{X_2\}$}] (l3) [below right = 20pt and 5pt of s4] {\usebox{\genericfilt}};
+
+        \node[draw=blue!75, fill=blue!20, thick, circle, label=below:{$\color{gray!50}\{X_3\}$}, onslide=<2>{opacity=0.2}] (l4) [below left = 20pt and 5pt of s5] {\usebox{\genericfilt}};
+        \node[draw=blue!75, fill=blue!20, thick, circle, label=below:{$\color{gray!50}\{X_3\}$}, onslide=<1>{opacity=0.2}] (l5) [below right = 20pt and 5pt of s5] {\usebox{\genericfilt}};
+        
+        \node[draw=orange!75, fill=orange!20, thick, circle, label=below:{$\color{gray!50}\{X_1\}$}, opacity=0.2] (l7) [below left = 20pt and 5pt of s6] {\usebox{\genericfilt}};
+        \node[draw=orange!75, fill=orange!20, thick, circle, label=below:{$\color{gray!50}\{X_1\}$}, opacity=0.2] (l8) [below right = 20pt and 5pt of s6] {\usebox{\genericfilt}};
+        
+        % edges
+        \draw [->] (s1) -- (p1);
+        \draw [->, opacity=0.2] (s1) -- (p2);
+
+        \draw [->] (p1) -- (l1);
+        \draw [->] (p1) -- (s2);
+
+        \draw [->, opacity=0.2] (p2) -- (s3);
+
+        \draw [->, onslide=<2>{opacity=0.2}] (s2) -- (p3);
+        \draw [->, onslide=<1>{opacity=0.2}] (s2) -- (p4);
+
+        \draw [->, opacity=0.2] (s3) -- (p5);
+
+        \draw [->, onslide=<2>{opacity=0.2}] (p3) -- (s4);
+        \draw [->, onslide=<2>{opacity=0.2}] (p3) -- (s5);
+        
+        \draw [->, onslide=<1>{opacity=0.2}] (p4) -- (s5);
+        \draw [->, onslide=<1>{opacity=0.2}] (p4) -- (l3);
+        
+        \draw [->, opacity=0.2] (s4) -- (l2);
+        \draw [->, onslide=<2>{opacity=0.2}] (s4) -- (l3);
+        
+        \draw [->, onslide=<2>{opacity=0.2}] (s5) -- (l4);
+        \draw [->, onslide=<1>{opacity=0.2}] (s5) -- (l5);
+        
+        \draw [->, opacity=0.2] (p5) -- (s5);
+        \draw [->, opacity=0.2] (p5) -- (s6);
+        
+        \draw [->, opacity=0.2] (p2) -- (l6);
+        
+        \draw [->, opacity=0.2] (s6) -- (l7);
+        \draw [->, opacity=0.2] (s6) -- (l8);
+    \end{tikzpicture}
+}
+
+\begin{equation}
+\SPN(\bm{x}) = \sum_{i=1}^K \prod_{(\SumNode,\Node) \in \SPT_{i,E}} w_{\SumNode,\Node} \prod_{\Leaf \in \SPT_{i,V}} p(\bm{x}_\Leaf \cbar \theta_\Leaf)
+\end{equation}
+\end{frame}
+
+\begin{frame}{Exact Marginalisation in SPNs}
+\scalebox{0.9}{
+\begin{tikzpicture}[>=latex, minimum size=6mm, inner sep=0pt, align=center]
+
+        % nodes
+        \node[draw=black!75, fill=gray!20, label=right:{$\color{gray}\{X_1,X_2,X_3\}$}, onslide=<1>{label=left:{$\color{orange!75}\bigintsss\!\color{purple!75}\bigintsss\!\color{blue!75}\bigintsss\;$}}, thick, circle] (s1) {\large$+$};
+
+        \node[draw=black!75, fill=gray!20, thick, circle, onslide=<2>{label=left:{$\color{orange!75}\bigintsss\!\color{purple!75}\bigintsss\!\color{blue!75}\bigintsss\;$}}] (p1) [below left = 20pt and 40pt of s1]  {\large$\times$};
+        \node[draw=black!75, fill=gray!20, label=right:{\color{gray}$\{X_1,X_2,X_3\}$}, thick, circle, onslide=<2>{label=left:{$\color{orange!75}\bigintsss\!\color{purple!75}\bigintsss\!\color{blue!75}\bigintsss\;$}}] (p2) [below right = 20pt and 40pt of s1]  {\large$\times$};
+
+        \node[draw=black!75, diagonal fill={blue!20}{purple!20}, thick, circle, onslide=<3>{label=left:{$\color{purple!75}\bigintsss\!\color{blue!75}\bigintsss\;$}}] (s2) [below right = 20pt and 15pt of p1] {\large$+$};
+        \node[draw=black!75, diagonal fill={orange!20}{blue!20}, thick, circle, onslide=<3>{label=left:{$\color{orange!75}\bigintsss\!\color{blue!75}\bigintsss\;$}}] (s3) [below left = 20pt and 15pt of p2] {\large$+$};
+
+        \node[draw=black!75, diagonal fill={blue!20}{purple!20}, thick, circle, onslide=<4>{label=left:{$\color{purple!75}\bigintsss\!\color{blue!75}\bigintsss\;$}}] (p3) [below left = 20pt and 20pt of s2]  {\large$\times$};
+        \node[draw=black!75, diagonal fill={blue!20}{purple!20}, thick, circle, onslide=<4>{label=left:{$\color{purple!75}\bigintsss\!\color{blue!75}\bigintsss\;$}}] (p4) [below right = 20pt and 0pt of s2]  {\large$\times$};
+        \node[draw=black!75, diagonal fill={orange!20}{blue!20}, label=right:{$\color{gray}\{X_2, X_3\}$}, thick, circle, onslide=<4>{label=left:{$\color{orange!75}\bigintsss\!\color{blue!75}\bigintsss\;$}}] (p5) [below right = 20pt and 0pt of s3]  {\large$\times$};
+        
+        \node[draw=purple!75, fill=purple!20, label=right:{$\color{gray}\{X_3\}$}, thick, circle, onslide=<5>{label=left:{$\color{purple!75}\bigintsss$}} ] (s4) [below left = 20pt and 10pt of p3] {\large$+$};
+        \node[draw=blue!75, fill=blue!20, label=right:{$\color{gray}\{X_2\}$}, thick, circle, onslide=<5>{label=left:{$\color{blue!75}\bigintsss$}}] (s5) [below right = 20pt and 0pt of p4] {\large$+$};
+        \node[draw=orange!75, fill=orange!20, label=right:{$\color{gray}\{X_1\}$}, thick, circle, onslide=<5>{label=left:{$\color{orange!75}\bigintsss$}}] (s6) [below right = 20pt and 20pt of p5] {\large$+$};
+
+        \node[draw=orange!75, thick, circle, fill=orange!20, onslide=<3->{label=left:{$\color{orange!75}\bigintsss$}}] (l1) [below left = 20pt and 20pt of p1] {\usebox{\genericfilt}};
+        \node[draw=purple!75, thick, circle, fill=purple!20, label=right:{$\color{gray}\{X_2\}$}, onslide=<3->{label=left:{$\color{purple!75}\bigintsss$}}] (l6) [below right = 20pt and 20pt of p2] {\usebox{\genericfilt}};
+
+        \node[draw=purple!75, fill=purple!20, thick, circle, label=below:{$\color{gray}\{X_2\}$}, onslide=<6>{label=left:{$\color{purple!75}\bigintsss$}}] (l2) [below left = 20pt and 5pt of s4] {\usebox{\genericfilt}};
+        \node[draw=purple!75, fill=purple!20, thick, circle, label=below:{$\color{gray}\{X_2\}$}, onslide=<6>{label=left:{$\color{purple!75}\bigintsss$}}] (l3) [below right = 20pt and 5pt of s4] {\usebox{\genericfilt}};
+
+        \node[draw=blue!75, fill=blue!20, thick, circle, label=below:{$\color{gray}\{X_3\}$}, onslide=<6>{label=left:{$\color{blue!75}\bigintsss$}}] (l4) [below left = 20pt and 5pt of s5] {\usebox{\genericfilt}};
+        \node[draw=blue!75, fill=blue!20, thick, circle, label=below:{$\color{gray}\{X_3\}$}, onslide=<6>{label=left:{$\color{blue!75}\bigintsss$}}] (l5) [below right = 20pt and 5pt of s5] {\usebox{\genericfilt}};
+        
+        \node[draw=orange!75, fill=orange!20, thick, circle, label=below:{$\color{gray}\{X_1\}$}, onslide=<6>{label=left:{$\color{orange!75}\bigintsss$}}] (l7) [below left = 20pt and 5pt of s6] {\usebox{\genericfilt}};
+        \node[draw=orange!75, fill=orange!20, thick, circle, label=below:{$\color{gray}\{X_1\}$}, onslide=<6>{label=left:{$\color{orange!75}\bigintsss$}}] (l8) [below right = 20pt and 5pt of s6] {\usebox{\genericfilt}};
+        
+        % edges
+        \draw [->] (s1) -- (p1);
+        \draw [->] (s1) -- (p2);
+
+        \draw [->] (p1) -- (l1);
+        \draw [->] (p1) -- (s2);
+
+        \draw [->] (p2) -- (s3);
+
+        \draw [->] (s2) -- (p3);
+        \draw [->] (s2) -- (p4);
+
+        \draw [->] (s3) -- (p5);
+
+        \draw [->] (p3) -- (s4);
+        \draw [->] (p3) -- (s5);
+        
+        \draw [->] (p4) -- (s5);
+        \draw [->] (p4) -- (l3);
+        
+        \draw [->] (s4) -- (l2);
+        \draw [->] (s4) -- (l3);
+        
+        \draw [->] (s5) -- (l4);
+        \draw [->] (s5) -- (l5);
+        
+        \draw [->] (p5) -- (s5);
+        \draw [->] (p5) -- (s6);
+        
+        \draw [->] (p2) -- (l6);
+        
+        \draw [->] (s6) -- (l7);
+        \draw [->] (s6) -- (l8);
+    \end{tikzpicture}
+}
+
+\end{frame}
+
+\end{document}
