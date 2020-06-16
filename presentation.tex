@@ -98,12 +98,12 @@ reversed diagonal fill/.style 2 args={fill=#2, path picture={
     A sum-product network [Poon \& Domingos 2011] over random variables $\X$ is a tuple $\SPN = (\graph, \scope, \bm{w}, \theta)$, consisting of a \emph{computational graph} $\graph$, a \emph{scope-function} $\scope$ [Trapp et al. 2019], network weights $\bm{w}$ and leaf node parameters $\theta$.
 \end{block}
 %\\[2em]
-Why use SPNs? \emph{Exact and efficient} computation of many probabilistic inference tasks, e.g.~marginalisation.
-\\[2em]
+Why use SPNs? \emph{\textbf{Exact and efficient}} computation of many probabilistic inference tasks, e.g.~marginalisation.
 
-SPNs are deep structured mixture models, generalising shallow mixtures, using an architecture that is a special type of a sparse \emph{linear} neural network with non-linear inputs.
+SPNs are deep structured mixture models, generalising shallow mixtures, using an architecture that is a special type of a sparse \emph{linear} neural network with non-linear inputs. 
 
 Every SPN is a multi-linear function in its weights.
+
 \end{frame}
 
 \begin{frame}{Computational Graph: $\graph$}
@@ -192,6 +192,9 @@ Every SPN is a multi-linear function in its weights.
         \node[draw, onslide=<2->{draw=black!75, diagonal fill={blue!20}{purple!20}}, thick, circle] (p3) [below left = 20pt and 20pt of s2]  {\large$\times$};
         \node[draw, onslide=<2->{draw=black!75, diagonal fill={blue!20}{purple!20}}, thick, circle] (p4) [below right = 20pt and 0pt of s2]  {\large$\times$};
         \node[draw, onslide=<2->{draw=black!75, diagonal fill={orange!20}{blue!20}, label=right:{$\{X_2, X_3\}$}}, thick, circle] (p5) [below right = 20pt and 0pt of s3]  {\large$\times$};
+
+        \node [onslide=<2->{opacity=0}] (rotatetext1) [below right = 20pt and 100pt of s3] {completeness / \\ smoothness};
+        \node [onslide=<1>{opacity=0}, onslide=<3->{opacity=0}] (rotatetext2) [below right = 20pt and 100pt of s3] {decomposability};
         
         \node[draw=purple!75, fill=purple!20, label=right:{$\{X_3\}$}, thick, circle] (s4) [below left = 20pt and 10pt of p3] {\large$+$};
         \node[draw=blue!75, fill=blue!20, label=right:{$\{X_2\}$}, thick, circle] (s5) [below right = 20pt and 0pt of p4] {\large$+$};
@@ -389,6 +392,12 @@ Every SPN is a multi-linear function in its weights.
     \end{tikzpicture}
 }
 
+\end{frame}
+
+\begin{frame}{References}
+\scriptsize [Poon \& Domingos 2011] H. Poon and P. M. Domingos, ‘Sum-product networks: A new deep architecture’, UAI 2011, pp. 337–346.
+
+\scriptsize [Trapp et al. 2019] M. Trapp, R. Peharz, H. Ge, F. Pernkopf and Z. Ghahramani, ‘Bayesian learning of sum-product networks’, NeurIPS 2019, pp. 6344–6355.
 \end{frame}
 
 \end{document}
